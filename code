@@ -1,0 +1,93 @@
+import requests
+from PIL import Image, ImageDraw, ImageFont
+from io import BytesIO
+from moviepy.editor import ImageClip, concatenate_videoclips, AudioFileClip
+
+# GroqCloud API key (replace with your own API key)
+GROQCLOUD_API_KEY = 'gsk_pD4AKpzUeQ8p3qdi08zRWGdyb3FYHlZV3hp9PWULLTDxIfFAs1ZXy'
+GROQCLOUD_API_URL = 'https://api.groqcloud.com/v1/generate-image'  # Example endpoint, replace with actual
+
+# Set up a session with retries and timeouts
+session = requests.Session()
+
+def download_image(url):
+    """Downloads an image from a given URL."""
+    response = requests.get(url)
+    img = Image.open(BytesIO(response.content))
+    img.save("product_image.png")
+    return "product_image.png"
+
+def download_music(url):
+    """Downloads music from a given URL."""
+    response = requests.get(url)
+    with open("theme_music.mp3", "wb") as f:
+        f.write(response.content)
+    return "theme_music.mp3"
+
+# Function to create promotional banner
+def create_banner(product_image_path, promo_text, color_palette):
+    # Open product image
+    product_image = Image.open(product_image_path)
+    
+    # Resize product image to fit within the banner
+    product_image = product_image.resize((300, 300))  # Resize to a reasonable size for banner
+    
+    # Create a blank image for the banner
+    banner = Image.new('RGB', (1200, 400), color=color_palette['background'])
+
+    # Paste product image onto banner
+    banner.paste(product_image, (50, 50))
+    
+    # Draw promotional text
+    draw = ImageDraw.Draw(banner)
+    
+    # Load a custom font or use default
+    try:
+        font = ImageFont.truetype("arial.ttf", 40)  # Use a .ttf font if available
+    except IOError:
+        font = ImageFont.load_default()  # Fallback to default if custom font fails
+    
+    # Add promotional text to the banner
+    draw.text((400, 150), promo_text, font=font, fill=color_palette['text_color'])
+    
+    # Save banner as a PNG file
+    banner.save("promo_banner.png")
+    return banner
+
+# Function to create promotional video
+def create_promo_video(product_image_path, banner_path, output_path, theme_music_path):
+    # Load the product image and banner as clips
+    product_image_clip = ImageClip(product_image_path).set_duration(5)
+    banner_clip = ImageClip(banner_path).set_duration(5)
+
+    # Add background music (audio)
+    audio = AudioFileClip(theme_music_path).subclip(0, 10)
+
+    # Combine product image and banner as a video
+    final_clip = concatenate_videoclips([product_image_clip, banner_clip], method="compose")
+    final_clip = final_clip.set_audio(audio)
+
+    # Save the video
+    final_clip.write_videofile(output_path, fps=24)
+
+# Download a public image (using a placeholder image from a public URL)
+image_url = "https://via.placeholder.com/300.png"  # Placeholder image URL
+product_image_path = download_image(image_url)
+
+# Download a public music file (using a royalty-free track)
+music_url = "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"  # Example royalty-free music
+theme_music_path = download_music(music_url)
+
+# Example usage
+color_palette = {
+    'background': '#FFD700',  # Gold background
+    'text_color': '#000000'   # Black text
+}
+
+promo_text = "50% OFF Diwali Sale! Limited Time Offer"
+
+# Create the banner with the downloaded product image
+banner = create_banner(product_image_path, promo_text, color_palette)
+
+# Create promotional video
+create_promo_video(product_image_path, "promo_banner.png", "promo_video.mp4", theme_music_path)
